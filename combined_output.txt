@@ -1,0 +1,5517 @@
+Filename: register.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    $stmt = $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $username, SQLITE3_TEXT);
+    $stmt->bindValue(2, $password, SQLITE3_TEXT);
+    $stmt->bindValue(3, 'user', SQLITE3_TEXT);
+
+    if ($stmt->execute()) {
+        header("Location: login.php");
+        exit();
+    } else {
+        $error = "Kayıt başarısız!";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kayıt Ol</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">Kayıt Ol</h2>
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        <form action="register.php" method="post">
+            <div class="form-group">
+                <label for="username">Kullanıcı Adı</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Kayıt Ol</button>
+        </form>
+        <div class="mt-3">
+            Zaten hesabınız var mı? <a href="login.php">Giriş Yap</a>
+        </div>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: delete_user.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the user deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['delete_user_id'];
+
+    $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: sepete_ekle.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("INSERT INTO carts (user_id, shoe_id, quantity) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->bindValue(3, 1, SQLITE3_INTEGER); // Miktar 1 olarak ekleniyor
+    $stmt->execute();
+}
+
+header("Location: sepetim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: style_index.css
+--------------------------------------------------------------------------------
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    color: #343a40;
+}
+
+.header {
+    width: 100%;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.nav-link {
+    color: #343a40 !important;
+}
+
+.nav-link:hover {
+    color: #007bff !important;
+}
+
+.form-inline .form-control {
+    width: auto;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-img-top {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.footer {
+    width: 100%;
+    text-align: center;
+}
+
+.footer .container {
+    max-width: 960px;
+    margin: auto;
+}
+
+.footer span {
+    color: #6c757d;
+}
+
+================================================================================
+
+Filename: db.php
+--------------------------------------------------------------------------------
+<?php
+$db_dir = __DIR__ . '/sqlite';
+if (!file_exists($db_dir)) {
+    mkdir($db_dir, 0777, true);
+}
+
+try {
+    $db = new SQLite3($db_dir . '/ayakkabi_magazasi.db');
+} catch (Exception $e) {
+    die($e->getMessage());
+}
+
+// Veritabanı tablolarını oluştur
+$db->exec("CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    profile_pic TEXT
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS shoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    price REAL NOT NULL,
+    image TEXT
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    shoe_id INTEGER,
+    comment TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS carts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    shoe_id INTEGER,
+    quantity INTEGER,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    shoe_id INTEGER,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Admin kullanıcısını ekle
+$admin_username = 'admin';
+$admin_password = 'admin123'; // Güçlü bir şifre kullanmanız önerilir
+$admin_role = 'admin';
+
+// Kullanıcı tablosunda admin kullanıcı olup olmadığını kontrol edin
+$stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE username = ?");
+$stmt->bindValue(1, $admin_username, SQLITE3_TEXT);
+$result = $stmt->execute();
+$count = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
+if ($count == 0) {
+    // Admin kullanıcısı yoksa ekleyin
+    $stmt = $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $admin_username, SQLITE3_TEXT);
+    $stmt->bindValue(2, $admin_password, SQLITE3_TEXT);
+    $stmt->bindValue(3, $admin_role, SQLITE3_TEXT);
+    $stmt->execute();
+
+
+   
+}
+?>
+
+
+
+
+================================================================================
+
+Filename: search.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+$query = $_GET['query'] ?? '';
+
+// Güvensiz SQL sorgusu (SQL Injection zafiyeti içerir)
+$shoes_query = "SELECT id, name, description, price, image FROM shoes WHERE name LIKE '%$query%' OR description LIKE '%$query%'";
+
+$shoes_result = $db->query($shoes_query);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Arama Sonuçları</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılar</a></div>
+        <form class="search-form" action="search.php" method="get">
+            <input type="text" name="query" placeholder="Ayakkabı Ara">
+            <button type="submit">Ara</button>
+        </form>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($username); ?></span>
+            <a href="logout.php" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Arama Sonuçları</h1>
+        <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="shoe-card">
+                <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                <div>
+                    <h3><a href="shoe.php?id=<?php echo $shoe['id']; ?>" style="color: #50fa7b;"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                    <p><?php echo htmlspecialchars($shoe['description']); ?></p>
+                    <p><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: update_product.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the product update
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['update_shoe_id'];
+    $name = $_POST['name'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+
+    $stmt = $db->prepare("UPDATE shoes SET name = ?, description = ?, price = ? WHERE id = ?");
+    $stmt->bindValue(1, $name, SQLITE3_TEXT);
+    $stmt->bindValue(2, $description, SQLITE3_TEXT);
+    $stmt->bindValue(3, $price, SQLITE3_TEXT);
+    $stmt->bindValue(4, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: index.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Ürünleri veritabanından çek
+$shoes_query = "SELECT id, name, description, price, image FROM shoes";
+$shoes_result = $db->query($shoes_query);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ana Sayfa</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Sayfayı yatay kaydırma yapmasını engellemek için */
+        }
+
+        .header {
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .nav-link {
+            color: #343a40 !important;
+        }
+
+        .nav-link:hover {
+            color: #007bff !important;
+        }
+
+        .form-inline .form-control {
+            width: auto;
+        }
+
+        .container {
+            margin-top: 100px;
+        }
+
+        .shoe-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .shoe-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .col-md-3 {
+            flex: 0 0 23%;
+            max-width: 23%;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+        }
+
+        .footer .container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .footer span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Ürünler</h1>
+        <div class="row">
+            <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="col-md-3">
+                    <div class="shoe-card">
+                        <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                        <div>
+                            <h3 class="card-title"><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                            <p class="card-text"><?php echo htmlspecialchars($shoe['description']); ?></p>
+                            <p class="card-text"><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                            <form action="sepete_ekle.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-primary">Sepete Ekle</button>
+                            </form>
+                            <form action="favorilere_ekle.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-secondary">Favorilere Ekle</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+    <?php
+        // Reflected XSS zafiyeti
+        if (isset($_GET['message'])) {
+            echo "<script>alert('" . $_GET['message'] . "');</script>";
+        }
+    ?>
+</body>
+</html>
+
+================================================================================
+
+Filename: add_to_cart.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("INSERT INTO carts (user_id, shoe_id, quantity) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->bindValue(3, 1, SQLITE3_INTEGER); // Miktar 1 olarak ekleniyor
+    $stmt->execute();
+}
+
+header("Location: index.php");
+exit();
+?>
+
+================================================================================
+
+Filename: delete_product.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the product deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['delete_shoe_id'];
+
+    $stmt = $db->prepare("DELETE FROM shoes WHERE id = ?");
+    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: style_login.css
+--------------------------------------------------------------------------------
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family: Roboto, -apple-system, 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+	background: #3b4465;
+}
+
+.forms-section {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.section-title {
+	font-size: 32px;
+	letter-spacing: 1px;
+	color: #fff;
+}
+
+.forms {
+	display: flex;
+	align-items: flex-start;
+	margin-top: 30px;
+}
+
+.form-wrapper {
+	animation: hideLayer .3s ease-out forwards;
+}
+
+.form-wrapper.is-active {
+	animation: showLayer .3s ease-in forwards;
+}
+
+@keyframes showLayer {
+	50% {
+		z-index: 1;
+	}
+	100% {
+		z-index: 1;
+	}
+}
+
+@keyframes hideLayer {
+	0% {
+		z-index: 1;
+	}
+	49.999% {
+		z-index: 1;
+	}
+}
+
+.switcher {
+	position: relative;
+	cursor: pointer;
+	display: block;
+	margin-right: auto;
+	margin-left: auto;
+	padding: 0;
+	text-transform: uppercase;
+	font-family: inherit;
+	font-size: 16px;
+	letter-spacing: .5px;
+	color: #999;
+	background-color: transparent;
+	border: none;
+	outline: none;
+	transform: translateX(0);
+	transition: all .3s ease-out;
+}
+
+.form-wrapper.is-active .switcher-login {
+	color: #fff;
+	transform: translateX(90px);
+}
+
+.form-wrapper.is-active .switcher-signup {
+	color: #fff;
+	transform: translateX(-90px);
+}
+
+.underline {
+	position: absolute;
+	bottom: -5px;
+	left: 0;
+	overflow: hidden;
+	pointer-events: none;
+	width: 100%;
+	height: 2px;
+}
+
+.underline::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: inherit;
+	display: block;
+	width: inherit;
+	height: inherit;
+	background-color: currentColor;
+	transition: transform .2s ease-out;
+}
+
+.switcher-login .underline::before {
+	transform: translateX(101%);
+}
+
+.switcher-signup .underline::before {
+	transform: translateX(-101%);
+}
+
+.form-wrapper.is-active .underline::before {
+	transform: translateX(0);
+}
+
+.form {
+	overflow: hidden;
+	min-width: 260px;
+	margin-top: 50px;
+	padding: 30px 25px;
+  border-radius: 5px;
+	transform-origin: top;
+}
+
+.form-login {
+	animation: hideLogin .3s ease-out forwards;
+}
+
+.form-wrapper.is-active .form-login {
+	animation: showLogin .3s ease-in forwards;
+}
+
+@keyframes showLogin {
+	0% {
+		background: #d7e7f1;
+		transform: translate(40%, 10px);
+	}
+	50% {
+		transform: translate(0, 0);
+	}
+	100% {
+		background-color: #fff;
+		transform: translate(35%, -20px);
+	}
+}
+
+@keyframes hideLogin {
+	0% {
+		background-color: #fff;
+		transform: translate(35%, -20px);
+	}
+	50% {
+		transform: translate(0, 0);
+	}
+	100% {
+		background: #d7e7f1;
+		transform: translate(40%, 10px);
+	}
+}
+
+.form-signup {
+	animation: hideSignup .3s ease-out forwards;
+}
+
+.form-wrapper.is-active .form-signup {
+	animation: showSignup .3s ease-in forwards;
+}
+
+@keyframes showSignup {
+	0% {
+		background: #d7e7f1;
+		transform: translate(-40%, 10px) scaleY(.8);
+	}
+	50% {
+		transform: translate(0, 0) scaleY(.8);
+	}
+	100% {
+		background-color: #fff;
+		transform: translate(-35%, -20px) scaleY(1);
+	}
+}
+
+@keyframes hideSignup {
+	0% {
+		background-color: #fff;
+		transform: translate(-35%, -20px) scaleY(1);
+	}
+	50% {
+		transform: translate(0, 0) scaleY(.8);
+	}
+	100% {
+		background: #d7e7f1;
+		transform: translate(-40%, 10px) scaleY(.8);
+	}
+}
+
+.form fieldset {
+	position: relative;
+	opacity: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	transition: all .3s ease-out;
+}
+
+.form-login fieldset {
+	transform: translateX(-50%);
+}
+
+.form-signup fieldset {
+	transform: translateX(50%);
+}
+
+.form-wrapper.is-active fieldset {
+	opacity: 1;
+	transform: translateX(0);
+	transition: opacity .4s ease-in, transform .35s ease-in;
+}
+
+.form legend {
+	position: absolute;
+	overflow: hidden;
+	width: 1px;
+	height: 1px;
+	clip: rect(0 0 0 0);
+}
+
+.input-block {
+	margin-bottom: 20px;
+}
+
+.input-block label {
+	font-size: 14px;
+  color: #a1b4b4;
+}
+
+.input-block input {
+	display: block;
+	width: 100%;
+	margin-top: 8px;
+	padding-right: 15px;
+	padding-left: 15px;
+	font-size: 16px;
+	line-height: 40px;
+	color: #3b4465;
+  background: #eef9fe;
+  border: 1px solid #cddbef;
+  border-radius: 2px;
+}
+
+.form [type='submit'] {
+	opacity: 0;
+	display: block;
+	min-width: 120px;
+	margin: 30px auto 10px;
+	font-size: 18px;
+	line-height: 40px;
+	border-radius: 25px;
+	border: none;
+	transition: all .3s ease-out;
+}
+
+.form-wrapper.is-active .form [type='submit'] {
+	opacity: 1;
+	transform: translateX(0);
+	transition: all .4s ease-in;
+}
+
+.btn-login {
+	color: #fbfdff;
+	background: #a7e245;
+	transform: translateX(-30%);
+}
+
+.btn-signup {
+	color: #a7e245;
+	background: #fbfdff;
+	box-shadow: inset 0 0 0 2px #a7e245;
+	transform: translateX(30%);
+}
+
+================================================================================
+
+Filename: profile.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_pic'])) {
+    $upload_dir = 'uploads/';
+    $uploaded_file = $upload_dir . basename($_FILES['profile_pic']['name']);
+    
+    if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $uploaded_file)) {
+        $stmt = $db->prepare("UPDATE users SET profile_pic = ? WHERE id = ?");
+        $stmt->bindValue(1, $uploaded_file, SQLITE3_TEXT);
+        $stmt->bindValue(2, $user_id, SQLITE3_INTEGER);
+        $stmt->execute();
+    }
+}
+
+$stmt = $db->prepare("SELECT username, profile_pic FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profil</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+        .profile-pic {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılarım</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($user['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Profil</h2>
+        <?php if (!empty($user['profile_pic'])): ?>
+            <img src="<?php echo htmlspecialchars($user['profile_pic']); ?>" alt="Profil Resmi" class="profile-pic">
+        <?php endif; ?>
+        <form action="profile.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="profile_pic">Profil Resmi Yükle</label>
+                <input type="file" class="form-control-file" id="profile_pic" name="profile_pic">
+            </div>
+            <button type="submit" class="btn btn-primary">Güncelle</button>
+        </form>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: sepetten_cikar.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("DELETE FROM carts WHERE user_id = ? AND shoe_id = ?");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->execute();
+}
+
+header("Location: sepetim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: update_user.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the user update
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['update_user_id'];
+    $username = $_POST['username'];
+    $role = $_POST['role'];
+
+    $stmt = $db->prepare("UPDATE users SET username = ?, role = ? WHERE id = ?");
+    $stmt->bindValue(1, $username, SQLITE3_TEXT);
+    $stmt->bindValue(2, $role, SQLITE3_TEXT);
+    $stmt->bindValue(3, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: logout.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+session_destroy();
+header("Location: giris_kayit.php");
+exit();
+?>
+
+================================================================================
+
+Filename: add_product.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Ürün ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $name = $_POST['name'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+    $image = $_FILES['image']['name'];
+
+    // Resmi images dizinine taşı
+    move_uploaded_file($_FILES['image']['tmp_name'], "images/$image");
+
+    // SQL sorgusu
+    $stmt = $db->prepare("INSERT INTO shoes (name, description, price, image) VALUES (?, ?, ?, ?)");
+    $stmt->bindValue(1, $name, SQLITE3_TEXT);
+    $stmt->bindValue(2, $description, SQLITE3_TEXT);
+    $stmt->bindValue(3, $price, SQLITE3_TEXT);
+    $stmt->bindValue(4, $image, SQLITE3_TEXT);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ürün Ekle</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılarım</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Ürün Ekle</h2>
+        <a href="admin.php" class="btn btn-secondary btn-back">Geri Dön</a>
+        <form action="add_product.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Fiyat</label>
+                <input type="text" class="form-control" id="price" name="price" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Resim</label>
+                <input type="file" class="form-control-file" id="image" name="image" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Ürün Ekle</button>
+        </form>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: sepetim.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Sepete eklenen ürünleri çek
+$cart_query = "SELECT s.id, s.name, s.description, s.price, s.image, c.quantity FROM carts c JOIN shoes s ON c.shoe_id = s.id WHERE c.user_id = ?";
+$stmt = $db->prepare($cart_query);
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sepetim</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .nav-link {
+            color: #343a40 !important;
+        }
+
+        .nav-link:hover {
+            color: #007bff !important;
+        }
+
+        .form-inline .form-control {
+            width: auto;
+        }
+
+        .container {
+            margin-top: 100px;
+        }
+
+        .shoe-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .shoe-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .col-md-3 {
+            flex: 0 0 23%;
+            max-width: 23%;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+        }
+
+        .footer .container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .footer span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Sepetim</h1>
+        <div class="row">
+            <?php while ($shoe = $result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="col-md-3">
+                    <div class="shoe-card">
+                        <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                        <div>
+                            <h3 class="card-title"><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                            <p class="card-text"><?php echo htmlspecialchars($shoe['description']); ?></p>
+                            <p class="card-text"><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                            <p class="card-text"><strong>Miktar:</strong> <?php echo htmlspecialchars($shoe['quantity']); ?></p>
+                            <form action="sepetten_cikar.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-danger">Sepetten Çıkar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: favorilere_ekle.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("INSERT INTO favorites (user_id, shoe_id) VALUES (?, ?)");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->execute();
+}
+
+header("Location: favorilerim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: styles.css
+--------------------------------------------------------------------------------
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    color: #343a40;
+}
+
+.header {
+    width: 100%;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.nav-link {
+    color: #343a40 !important;
+}
+
+.nav-link:hover {
+    color: #007bff !important;
+}
+
+.form-inline .form-control {
+    width: auto;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-img-top {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.footer {
+    width: 100%;
+    text-align: center;
+}
+
+.footer .container {
+    max-width: 960px;
+    margin: auto;
+}
+
+.footer span {
+    color: #6c757d;
+}
+
+.shoe-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 15px;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 800px;
+    color: #343a40;
+    display: flex;
+    align-items: center;
+}
+
+.shoe-card img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-right: 15px;
+}
+
+.shoe-card h3 {
+    margin-top: 0;
+}
+
+.shoe-card p {
+    margin: 5px 0;
+}
+
+.comments-section {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.comments-section h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.comment {
+    background-color: #f1f1f1;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.comment p {
+    margin: 0;
+}
+
+================================================================================
+
+Filename: giris_kayit.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action == 'login') {
+        // Giriş işlemi
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+
+        // SQL Injection zafiyeti burada
+        $query = "SELECT id, role FROM users WHERE username = '$username' AND password = '$password'";
+        $stmt = $db->query($query);
+        $user = $stmt->fetchArray(SQLITE3_ASSOC);
+
+        if ($user) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['role'] = $user['role'];
+            header("Location: index.php");
+            exit();
+        } else {
+            $error = "Geçersiz kullanıcı adı veya şifre!";
+        }
+    } elseif ($action == 'register') {
+        // Kayıt işlemi
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+
+        $stmt = $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+        $stmt->bindValue(1, $username, SQLITE3_TEXT);
+        $stmt->bindValue(2, $password, SQLITE3_TEXT);  // Burada password_hash kullanmak daha güvenli olacaktır
+        $stmt->bindValue(3, 'user', SQLITE3_TEXT);
+
+        if ($stmt->execute()) {
+            $success = "Kayıt başarılı! Giriş yapabilirsiniz.";
+        } else {
+            $error = "Kayıt başarısız!";
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login & Signup Forms</title>
+    <link rel="stylesheet" href="style_login.css">
+</head>
+<body>
+<section class="forms-section">
+  <h1 class="section-title">Login & Signup Forms</h1>
+  <div class="forms">
+    <div class="form-wrapper is-active">
+      <button type="button" class="switcher switcher-login">
+        Login
+        <span class="underline"></span>
+      </button>
+      <form class="form form-login" action="giris_kayit.php" method="post">
+        <input type="hidden" name="action" value="login">
+        <fieldset>
+          <legend>Please, enter your username and password for login.</legend>
+          <div class="input-block">
+            <label for="login-username">Username</label>
+            <input id="login-username" type="text" name="username" required>
+          </div>
+          <div class="input-block">
+            <label for="login-password">Password</label>
+            <input id="login-password" type="password" name="password" required>
+          </div>
+        </fieldset>
+        <?php if (isset($error) && $action == 'login'): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        <button type="submit" class="btn-login">Login</button>
+      </form>
+    </div>
+    <div class="form-wrapper">
+      <button type="button" class="switcher switcher-signup">
+        Sign Up
+        <span class="underline"></span>
+      </button>
+      <form class="form form-signup" action="giris_kayit.php" method="post">
+        <input type="hidden" name="action" value="register">
+        <fieldset>
+          <legend>Please, enter your username, email, password and password confirmation for sign up.</legend>
+          <div class="input-block">
+            <label for="signup-username">Username</label>
+            <input id="signup-username" type="text" name="username" required>
+          </div>
+          <div class="input-block">
+            <label for="signup-password">Password</label>
+            <input id="signup-password" type="password" name="password" required>
+          </div>
+          <div class="input-block">
+            <label for="signup-confirm-password">Confirm Password</label>
+            <input id="signup-confirm-password" type="password" name="confirm_password" required>
+          </div>
+        </fieldset>
+        <?php if (isset($success)): ?>
+            <div class="alert alert-success"><?php echo $success; ?></div>
+        <?php elseif (isset($error) && $action == 'register'): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        <button type="submit" class="btn-signup">Sign Up</button>
+      </form>
+    </div>
+  </div>
+</section>
+<script src="script_login.js"></script>
+</body>
+</html>
+
+================================================================================
+
+Filename: style_admin.css
+--------------------------------------------------------------------------------
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #3b4465;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.navbar {
+    background-color: #343a40;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.navbar .site-name {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.navbar .site-name a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.navbar .user-info {
+    display: flex;
+    align-items: center;
+}
+
+.navbar .user-info span {
+    margin-right: 15px;
+}
+
+.navbar .logout-button {
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.container {
+    padding: 20px;
+    width: 100%;
+    max-width: 1000px;
+    margin-top: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #44475a;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #50fa7b;
+}
+
+.btn-back {
+    margin-bottom: 20px;
+}
+
+label {
+    color: #fff;
+}
+
+.comment {
+    background-color: #6272a4;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.comment p {
+    margin: 0;
+}
+
+.comment form {
+    display: inline;
+}
+
+================================================================================
+
+Filename: script_login.js
+--------------------------------------------------------------------------------
+const switchers = [...document.querySelectorAll('.switcher')]
+
+switchers.forEach(item => {
+	item.addEventListener('click', function() {
+		switchers.forEach(item => item.parentElement.classList.remove('is-active'))
+		this.parentElement.classList.add('is-active')
+	})
+})
+
+================================================================================
+
+Filename: upload.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
+    $upload_dir = 'uploads/';
+    $uploaded_file = $upload_dir . basename($_FILES['file']['name']);
+    
+    if (move_uploaded_file($_FILES['file']['tmp_name'], $uploaded_file)) {
+        $stmt = $db->prepare("INSERT INTO uploads (user_id, filename, filepath) VALUES (?, ?, ?)");
+        $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(2, basename($_FILES['file']['name']), SQLITE3_TEXT);
+        $stmt->bindValue(3, $uploaded_file, SQLITE3_TEXT);
+        $stmt->execute();
+        echo "Dosya başarıyla yüklendi.";
+    } else {
+        echo "Dosya yükleme hatası!";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dosya Yükle</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılar</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Dosya Yükle</h2>
+        <a href="index.php" class="btn btn-secondary btn-back">Geri Dön</a>
+        <form action="upload.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">Dosya Seç</label>
+                <input type="file" class="form-control-file" id="file" name="file" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Yükle</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrap.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+================================================================================
+
+Filename: delete_comment.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the comment deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['delete_comment_id'];
+
+    $stmt = $db->prepare("DELETE FROM comments WHERE id = ?");
+    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: favorilerim.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Favorilere eklenen ürünleri çek
+$favorites_query = "SELECT s.id, s.name, s.description, s.price, s.image FROM favorites f JOIN shoes s ON f.shoe_id = s.id WHERE f.user_id = ?";
+$stmt = $db->prepare($favorites_query);
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Favorilerim</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .nav-link {
+            color: #343a40 !important;
+        }
+
+        .nav-link:hover {
+            color: #007bff !important;
+        }
+
+        .form-inline .form-control {
+            width: auto;
+        }
+
+        .container {
+            margin-top: 100px;
+        }
+
+        .shoe-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .shoe-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .col-md-3 {
+            flex: 0 0 23%;
+            max-width: 23%;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+        }
+
+        .footer .container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .footer span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Favorilerim</h1>
+        <div class="row">
+            <?php while ($shoe = $result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="col-md-3">
+                    <div class="shoe-card">
+                        <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                        <div>
+                            <h3 class="card-title"><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                            <p class="card-text"><?php echo htmlspecialchars($shoe['description']); ?></p>
+                            <p class="card-text"><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                            <form action="favorilerimden_cikar.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-danger">Favorilerden Çıkar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: update_shoe.php
+--------------------------------------------------------------------------------
+
+================================================================================
+
+Filename: shoe.php
+--------------------------------------------------------------------------------
+<?php
+require_once 'db.php';
+session_start();
+
+// Ayakkabı ID'sini al
+$shoe_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("SELECT name, description, price, image FROM shoes WHERE id = ?");
+    $stmt->bindValue(1, $shoe_id, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    $shoe = $result->fetchArray(SQLITE3_ASSOC);
+} else {
+    echo "Geçersiz ayakkabı ID'si.";
+    exit();
+}
+
+// Yorumları çek
+$comments_stmt = $db->prepare("SELECT c.comment, u.username FROM comments c JOIN users u ON c.user_id = u.id WHERE c.shoe_id = ? ORDER BY c.created_at DESC");
+$comments_stmt->bindValue(1, $shoe_id, SQLITE3_INTEGER);
+$comments_result = $comments_stmt->execute();
+
+// Yorum ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment'])) {
+    $comment = trim($_POST['comment']);
+    $user_id = $_SESSION['user_id'] ?? 0;
+
+    if ($user_id > 0 && !empty($comment)) {
+        $insert_comment_stmt = $db->prepare("INSERT INTO comments (user_id, shoe_id, comment) VALUES (?, ?, ?)");
+        $insert_comment_stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+        $insert_comment_stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+        $insert_comment_stmt->bindValue(3, $comment, SQLITE3_TEXT);
+        $insert_comment_stmt->execute();
+        header("Location: shoe.php?id=" . $shoe_id . "&message=" . urlencode($comment));  // Reflected XSS zafiyeti burada
+        exit();
+    } else {
+        echo "Yorum eklenemedi. Lütfen giriş yapın ve yorum alanını boş bırakmayın.";
+        
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title><?php echo htmlspecialchars($shoe['name']); ?></title>
+    <link rel="stylesheet" href="style_index.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding-top: 70px;
+        }
+        .navbar {
+            background-color: #343a40;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .navbar .site-name a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .navbar .user-info span {
+            margin-right: 15px;
+        }
+        .navbar .logout-button {
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .container {
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+        }
+        .shoe-detail img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+        .comments-section {
+            margin-top: 30px;
+        }
+        .comment {
+            background-color: #e9ecef;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .form-group textarea {
+            resize: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılar</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="shoe-detail">
+            <h1><?php echo htmlspecialchars($shoe['name']); ?></h1>
+            <img src="uploads/<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+            <p><strong>Açıklama:</strong> <?php echo nl2br(htmlspecialchars($shoe['description'])); ?></p>
+            <p><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+        </div>
+
+        <div class="comments-section">
+            <h2>Yorumlar</h2>
+            <?php while ($comment = $comments_result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="comment">
+                    <p><strong><?php echo htmlspecialchars($comment['username']); ?>:</strong> <?php echo htmlspecialchars($comment['comment']); ?></p>
+                </div>
+            <?php endwhile; ?>
+
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <form action="shoe.php?id=<?php echo $shoe_id; ?>" method="post">
+                    <div class="form-group">
+                        <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Yorumunuzu yazın..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Yorumu Gönder</button>
+                </form>
+            <?php else: ?>
+                <p>Yorum yapmak için <a href="giris_kayit.php">giriş yapın</a>.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+    // Reflected XSS zafiyetinin çıktısı
+    if (isset($_GET['message'])) {
+        echo "<script>alert('" . htmlspecialchars($_GET['message']) . "');</script>";
+
+
+        
+    }
+    ?>
+</body>
+</html>
+
+================================================================================
+
+Filename: navbar.css
+--------------------------------------------------------------------------------
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 1;
+  overflow: hidden;
+  background: #fff;
+  transition: 3s;
+}
+
+ul {
+  list-style-type: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
+  width: 100%;
+  background-size: 400% 400%;
+  background-image: linear-gradient(-45deg, #ff5959, #ff4040, #ff0d6e, #ff8033,#d74177);
+  animation: 12s myGradient infinite;
+  border-radius: 40px;
+  box-shadow: 3px 3px 20px #ff3352;
+  border-top-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+@keyframes myGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50%{
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.fa-search {
+  transition: 1s;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+li a {
+  color: #fff;
+  text-decoration: none;
+  padding: 15px 20px;
+  font-family: verdana;
+  font-weight: lighter;
+  font-size: 20px;
+  letter-spacing: 1px;
+  opacity: 0.9;
+}
+
+.navigation {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.fa-search:hover,
+.active:hover,
+.active1:hover,
+.active2:hover {
+  color: #fff;
+  animation: 1.5s myFlash linear infinite;
+  text-shadow: 2px 2px 30px #fff;
+  transition: 2s;
+}
+
+@keyframes myFlash {
+  0% {
+    opacity: 1;
+    text-shadow: transparent;
+  }
+  50% {
+    opacity: .1;
+  }
+  100% {
+    opacity: 1;
+    text-shadow: 2px 2px 20px #fff;
+  }
+}
+
+.search-form {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.search-form input[type="text"] {
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-right: 10px;
+}
+
+.search-form button {
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  right: 0;
+  left: auto;
+}
+
+.ml-auto {
+  margin-left: auto;
+}
+
+================================================================================
+
+Filename: favorilerden_cikar.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("DELETE FROM favorites WHERE user_id = ? AND shoe_id = ?");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->execute();
+}
+
+header("Location: favorilerim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: csrf_token.php
+--------------------------------------------------------------------------------
+<?php
+function generateToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+}
+
+function validateToken($token) {
+    return $token === $_SESSION['csrf_token'];
+}
+?>
+
+================================================================================
+
+Filename: shoe_add.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Ayakkabı ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $name = $_POST['name'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+    $user_id = $_SESSION['user_id'];
+
+    $image_path = '';
+    if (!empty($_FILES['image']['name'])) {
+        $image_path = 'uploads/' . basename($_FILES['image']['name']);
+        if (!move_uploaded_file($_FILES['image']['tmp_name'], $image_path)) {
+            echo "Resim yükleme hatası!";
+            exit();
+        }
+    }
+
+    $stmt = $db->prepare("INSERT INTO shoes (name, description, price, image) VALUES (?, ?, ?, ?)");
+    $stmt->bindValue(1, $name, SQLITE3_TEXT);
+    $stmt->bindValue(2, $description, SQLITE3_TEXT);
+    $stmt->bindValue(3, $price, SQLITE3_FLOAT);
+    $stmt->bindValue(4, $image_path, SQLITE3_TEXT);
+
+    if ($stmt->execute()) {
+        echo "Yeni ayakkabı başarıyla eklendi.";
+    } else {
+        echo "Hata: " . $db->lastErrorMsg();
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ayakkabı Ekle</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name">Ayakkabılarım</div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Ayakkabı Ekle</h2>
+        <a href="admin.php" class="btn btn-secondary btn-back">Geri Dön</a>
+        <form action="shoe_add.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Fiyat</label>
+                <input type="text" class="form-control" id="price" name="price" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Resim</label>
+                <input type="file" class="form-control-file" id="image" name="image" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Ayakkabı Ekle</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrap.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+================================================================================
+
+Filename: admin.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Admin girişi kontrolü
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Yorumları çek
+$comments_query = "SELECT c.id, c.comment, u.username, s.name as shoe_name FROM comments c JOIN users u ON c.user_id = u.id JOIN shoes s ON c.shoe_id = s.id ORDER BY c.created_at DESC";
+$comments_result = $db->query($comments_query);
+
+// Ürünleri çek
+$shoes_query = "SELECT * FROM shoes";
+$shoes_result = $db->query($shoes_query);
+
+// Kullanıcıları çek
+$users_query = "SELECT * FROM users";
+$users_result = $db->query($users_query);
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Paneli</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+        .comment, .shoe, .user {
+            background-color: #6272a4;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .comment p, .shoe p, .user p {
+            margin: 0;
+        }
+        .comment form, .shoe form, .user form {
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılarım</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($username); ?></span>
+            <a href="logout.php" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Admin Paneli</h2>
+
+        <h3>Ürün Ekle</h3>
+        <form action="add_product.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Fiyat</label>
+                <input type="text" class="form-control" id="price" name="price" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Resim</label>
+                <input type="file" class="form-control-file" id="image" name="image">
+            </div>
+            <button type="submit" class="btn btn-primary">Ürün Ekle</button>
+        </form>
+
+        <h3>Ürünler</h3>
+        <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="shoe">
+                <p><strong><?php echo htmlspecialchars($shoe['name']); ?></strong> - <em><?php echo htmlspecialchars($shoe['price']); ?> TL</em></p>
+                <p><?php echo htmlspecialchars($shoe['description']); ?></p>
+                <form action="delete_product.php" method="post" style="display: inline;">
+                    <input type="hidden" name="delete_shoe_id" value="<?php echo $shoe['id']; ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                </form>
+                <form action="update_product.php" method="post" style="display: inline;">
+                    <input type="hidden" name="update_shoe_id" value="<?php echo $shoe['id']; ?>">
+                    <input type="text" name="name" value="<?php echo htmlspecialchars($shoe['name']); ?>" required>
+                    <input type="text" name="description" value="<?php echo htmlspecialchars($shoe['description']); ?>" required>
+                    <input type="text" name="price" value="<?php echo htmlspecialchars($shoe['price']); ?>" required>
+                    <button type="submit" class="btn btn-warning btn-sm">Güncelle</button>
+                </form>
+            </div>
+        <?php endwhile; ?>
+
+        <h3>Yorumlar</h3>
+        <?php while ($comment = $comments_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="comment">
+                <p><?php echo htmlspecialchars($comment['comment']); ?></p>
+                <p><strong><?php echo htmlspecialchars($comment['username']); ?></strong> - <em><?php echo htmlspecialchars($comment['shoe_name']); ?></em></p>
+                <form action="delete_comment.php" method="post" style="display: inline;">
+                    <input type="hidden" name="delete_comment_id" value="<?php echo $comment['id']; ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                </form>
+            </div>
+        <?php endwhile; ?>
+
+        <h3>Kullanıcılar</h3>
+        <?php while ($user = $users_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="user">
+                <p><strong><?php echo htmlspecialchars($user['username']); ?></strong> - <em><?php echo htmlspecialchars($user['role']); ?></em></p>
+                <form action="delete_user.php" method="post" style="display: inline;">
+                    <input type="hidden" name="delete_user_id" value="<?php echo $user['id']; ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                </form>
+                <form action="update_user.php" method="post" style="display: inline;">
+                    <input type="hidden" name="update_user_id" value="<?php echo $user['id']; ?>">
+                    <input type="text" name="username" value="<?php echo htmlspecialchars($user['username']); ?>" required>
+                    <select name="role">
+                        <option value="user" <?php if ($user['role'] == 'user') echo 'selected'; ?>>Kullanıcı</option>
+                        <option value="editor" <?php if ($user['role'] == 'editor') echo 'selected'; ?>>Editör</option>
+                        <option value="admin" <?php if ($user['role'] == 'admin') echo 'selected'; ?>>Admin</option>
+                    </select>
+                    <button type="submit" class="btn btn-warning btn-sm">Güncelle</button>
+                </form>
+            </div>
+        <?php endwhile; ?>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: navbar.js
+--------------------------------------------------------------------------------
+function showSearch() {
+    const searchForm = document.getElementById('searchBar');
+    searchForm.classList.toggle('active');
+  }
+  
+================================================================================
+
+Filename: show_image.php
+--------------------------------------------------------------------------------
+<?php
+require_once 'db.php';
+
+$shoe_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("SELECT image FROM shoes WHERE id = ?");
+    $stmt->bindValue(1, $shoe_id, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    $shoe = $result->fetchArray(SQLITE3_ASSOC);
+    
+    if ($shoe && file_exists($shoe['image'])) {
+        header('Content-Type: image/jpeg');
+        readfile($shoe['image']);
+        exit();
+    }
+}
+
+echo "Resim bulunamadı.";
+?>
+
+================================================================================
+
+Filename: register.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+
+    $stmt = $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $username, SQLITE3_TEXT);
+    $stmt->bindValue(2, $password, SQLITE3_TEXT);
+    $stmt->bindValue(3, 'user', SQLITE3_TEXT);
+
+    if ($stmt->execute()) {
+        header("Location: login.php");
+        exit();
+    } else {
+        $error = "Kayıt başarısız!";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kayıt Ol</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center">Kayıt Ol</h2>
+        <?php if (isset($error)): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        <form action="register.php" method="post">
+            <div class="form-group">
+                <label for="username">Kullanıcı Adı</label>
+                <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Şifre</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Kayıt Ol</button>
+        </form>
+        <div class="mt-3">
+            Zaten hesabınız var mı? <a href="login.php">Giriş Yap</a>
+        </div>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: delete_user.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the user deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['delete_user_id'];
+
+    $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: sepete_ekle.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("INSERT INTO carts (user_id, shoe_id, quantity) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->bindValue(3, 1, SQLITE3_INTEGER); // Miktar 1 olarak ekleniyor
+    $stmt->execute();
+}
+
+header("Location: sepetim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: style_index.css
+--------------------------------------------------------------------------------
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    color: #343a40;
+}
+
+.header {
+    width: 100%;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.nav-link {
+    color: #343a40 !important;
+}
+
+.nav-link:hover {
+    color: #007bff !important;
+}
+
+.form-inline .form-control {
+    width: auto;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-img-top {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.footer {
+    width: 100%;
+    text-align: center;
+}
+
+.footer .container {
+    max-width: 960px;
+    margin: auto;
+}
+
+.footer span {
+    color: #6c757d;
+}
+
+================================================================================
+
+Filename: db.php
+--------------------------------------------------------------------------------
+<?php
+$db_dir = __DIR__ . '/sqlite';
+if (!file_exists($db_dir)) {
+    mkdir($db_dir, 0777, true);
+}
+
+try {
+    $db = new SQLite3($db_dir . '/ayakkabi_magazasi.db');
+} catch (Exception $e) {
+    die($e->getMessage());
+}
+
+// Veritabanı tablolarını oluştur
+$db->exec("CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    profile_pic TEXT
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS shoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    price REAL NOT NULL,
+    image TEXT
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    shoe_id INTEGER,
+    comment TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS carts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    shoe_id INTEGER,
+    quantity INTEGER,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+$db->exec("CREATE TABLE IF NOT EXISTS favorites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    shoe_id INTEGER,
+    added_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)");
+
+// Admin kullanıcısını ekle
+$admin_username = 'admin';
+$admin_password = 'admin123'; // Güçlü bir şifre kullanmanız önerilir
+$admin_role = 'admin';
+
+// Kullanıcı tablosunda admin kullanıcı olup olmadığını kontrol edin
+$stmt = $db->prepare("SELECT COUNT(*) as count FROM users WHERE username = ?");
+$stmt->bindValue(1, $admin_username, SQLITE3_TEXT);
+$result = $stmt->execute();
+$count = $result->fetchArray(SQLITE3_ASSOC)['count'];
+
+if ($count == 0) {
+    // Admin kullanıcısı yoksa ekleyin
+    $stmt = $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $admin_username, SQLITE3_TEXT);
+    $stmt->bindValue(2, $admin_password, SQLITE3_TEXT);
+    $stmt->bindValue(3, $admin_role, SQLITE3_TEXT);
+    $stmt->execute();
+}
+?>
+
+================================================================================
+
+Filename: search.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+$query = $_GET['query'] ?? '';
+
+// Güvensiz SQL sorgusu (SQL Injection zafiyeti içerir)
+$shoes_query = "SELECT id, name, description, price, image FROM shoes WHERE name LIKE '%$query%' OR description LIKE '%$query%'";
+
+$shoes_result = $db->query($shoes_query);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Arama Sonuçları</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılar</a></div>
+        <form class="search-form" action="search.php" method="get">
+            <input type="text" name="query" placeholder="Ayakkabı Ara">
+            <button type="submit">Ara</button>
+        </form>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($username); ?></span>
+            <a href="logout.php" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h1>Arama Sonuçları</h1>
+        <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="shoe-card">
+                <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                <div>
+                    <h3><a href="shoe.php?id=<?php echo $shoe['id']; ?>" style="color: #50fa7b;"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                    <p><?php echo htmlspecialchars($shoe['description']); ?></p>
+                    <p><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: update_product.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the product update
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['update_shoe_id'];
+    $name = $_POST['name'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+
+    $stmt = $db->prepare("UPDATE shoes SET name = ?, description = ?, price = ? WHERE id = ?");
+    $stmt->bindValue(1, $name, SQLITE3_TEXT);
+    $stmt->bindValue(2, $description, SQLITE3_TEXT);
+    $stmt->bindValue(3, $price, SQLITE3_TEXT);
+    $stmt->bindValue(4, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: index.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Ürünleri veritabanından çek
+$shoes_query = "SELECT id, name, description, price, image FROM shoes";
+$shoes_result = $db->query($shoes_query);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ana Sayfa</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Sayfayı yatay kaydırma yapmasını engellemek için */
+        }
+
+        .header {
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .nav-link {
+            color: #343a40 !important;
+        }
+
+        .nav-link:hover {
+            color: #007bff !important;
+        }
+
+        .form-inline .form-control {
+            width: auto;
+        }
+
+        .container {
+            margin-top: 100px;
+        }
+
+        .shoe-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .shoe-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .col-md-3 {
+            flex: 0 0 23%;
+            max-width: 23%;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+        }
+
+        .footer .container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .footer span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Ürünler</h1>
+        <div class="row">
+            <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="col-md-3">
+                    <div class="shoe-card">
+                        <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                        <div>
+                            <h3 class="card-title"><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                            <p class="card-text"><?php echo htmlspecialchars($shoe['description']); ?></p>
+                            <p class="card-text"><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                            <form action="sepete_ekle.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-primary">Sepete Ekle</button>
+                            </form>
+                            <form action="favorilere_ekle.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-secondary">Favorilere Ekle</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+    <?php
+        // Reflected XSS zafiyeti
+        if (isset($_GET['message'])) {
+            echo "<script>alert('" . $_GET['message'] . "');</script>";
+        }
+    ?>
+</body>
+</html>
+
+================================================================================
+
+Filename: add_to_cart.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("INSERT INTO carts (user_id, shoe_id, quantity) VALUES (?, ?, ?)");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->bindValue(3, 1, SQLITE3_INTEGER); // Miktar 1 olarak ekleniyor
+    $stmt->execute();
+}
+
+header("Location: index.php");
+exit();
+?>
+
+================================================================================
+
+Filename: delete_product.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the product deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['delete_shoe_id'];
+
+    $stmt = $db->prepare("DELETE FROM shoes WHERE id = ?");
+    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: style_login.css
+--------------------------------------------------------------------------------
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	font-family: Roboto, -apple-system, 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+	background: #3b4465;
+}
+
+.forms-section {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+.section-title {
+	font-size: 32px;
+	letter-spacing: 1px;
+	color: #fff;
+}
+
+.forms {
+	display: flex;
+	align-items: flex-start;
+	margin-top: 30px;
+}
+
+.form-wrapper {
+	animation: hideLayer .3s ease-out forwards;
+}
+
+.form-wrapper.is-active {
+	animation: showLayer .3s ease-in forwards;
+}
+
+@keyframes showLayer {
+	50% {
+		z-index: 1;
+	}
+	100% {
+		z-index: 1;
+	}
+}
+
+@keyframes hideLayer {
+	0% {
+		z-index: 1;
+	}
+	49.999% {
+		z-index: 1;
+	}
+}
+
+.switcher {
+	position: relative;
+	cursor: pointer;
+	display: block;
+	margin-right: auto;
+	margin-left: auto;
+	padding: 0;
+	text-transform: uppercase;
+	font-family: inherit;
+	font-size: 16px;
+	letter-spacing: .5px;
+	color: #999;
+	background-color: transparent;
+	border: none;
+	outline: none;
+	transform: translateX(0);
+	transition: all .3s ease-out;
+}
+
+.form-wrapper.is-active .switcher-login {
+	color: #fff;
+	transform: translateX(90px);
+}
+
+.form-wrapper.is-active .switcher-signup {
+	color: #fff;
+	transform: translateX(-90px);
+}
+
+.underline {
+	position: absolute;
+	bottom: -5px;
+	left: 0;
+	overflow: hidden;
+	pointer-events: none;
+	width: 100%;
+	height: 2px;
+}
+
+.underline::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: inherit;
+	display: block;
+	width: inherit;
+	height: inherit;
+	background-color: currentColor;
+	transition: transform .2s ease-out;
+}
+
+.switcher-login .underline::before {
+	transform: translateX(101%);
+}
+
+.switcher-signup .underline::before {
+	transform: translateX(-101%);
+}
+
+.form-wrapper.is-active .underline::before {
+	transform: translateX(0);
+}
+
+.form {
+	overflow: hidden;
+	min-width: 260px;
+	margin-top: 50px;
+	padding: 30px 25px;
+  border-radius: 5px;
+	transform-origin: top;
+}
+
+.form-login {
+	animation: hideLogin .3s ease-out forwards;
+}
+
+.form-wrapper.is-active .form-login {
+	animation: showLogin .3s ease-in forwards;
+}
+
+@keyframes showLogin {
+	0% {
+		background: #d7e7f1;
+		transform: translate(40%, 10px);
+	}
+	50% {
+		transform: translate(0, 0);
+	}
+	100% {
+		background-color: #fff;
+		transform: translate(35%, -20px);
+	}
+}
+
+@keyframes hideLogin {
+	0% {
+		background-color: #fff;
+		transform: translate(35%, -20px);
+	}
+	50% {
+		transform: translate(0, 0);
+	}
+	100% {
+		background: #d7e7f1;
+		transform: translate(40%, 10px);
+	}
+}
+
+.form-signup {
+	animation: hideSignup .3s ease-out forwards;
+}
+
+.form-wrapper.is-active .form-signup {
+	animation: showSignup .3s ease-in forwards;
+}
+
+@keyframes showSignup {
+	0% {
+		background: #d7e7f1;
+		transform: translate(-40%, 10px) scaleY(.8);
+	}
+	50% {
+		transform: translate(0, 0) scaleY(.8);
+	}
+	100% {
+		background-color: #fff;
+		transform: translate(-35%, -20px) scaleY(1);
+	}
+}
+
+@keyframes hideSignup {
+	0% {
+		background-color: #fff;
+		transform: translate(-35%, -20px) scaleY(1);
+	}
+	50% {
+		transform: translate(0, 0) scaleY(.8);
+	}
+	100% {
+		background: #d7e7f1;
+		transform: translate(-40%, 10px) scaleY(.8);
+	}
+}
+
+.form fieldset {
+	position: relative;
+	opacity: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	transition: all .3s ease-out;
+}
+
+.form-login fieldset {
+	transform: translateX(-50%);
+}
+
+.form-signup fieldset {
+	transform: translateX(50%);
+}
+
+.form-wrapper.is-active fieldset {
+	opacity: 1;
+	transform: translateX(0);
+	transition: opacity .4s ease-in, transform .35s ease-in;
+}
+
+.form legend {
+	position: absolute;
+	overflow: hidden;
+	width: 1px;
+	height: 1px;
+	clip: rect(0 0 0 0);
+}
+
+.input-block {
+	margin-bottom: 20px;
+}
+
+.input-block label {
+	font-size: 14px;
+  color: #a1b4b4;
+}
+
+.input-block input {
+	display: block;
+	width: 100%;
+	margin-top: 8px;
+	padding-right: 15px;
+	padding-left: 15px;
+	font-size: 16px;
+	line-height: 40px;
+	color: #3b4465;
+  background: #eef9fe;
+  border: 1px solid #cddbef;
+  border-radius: 2px;
+}
+
+.form [type='submit'] {
+	opacity: 0;
+	display: block;
+	min-width: 120px;
+	margin: 30px auto 10px;
+	font-size: 18px;
+	line-height: 40px;
+	border-radius: 25px;
+	border: none;
+	transition: all .3s ease-out;
+}
+
+.form-wrapper.is-active .form [type='submit'] {
+	opacity: 1;
+	transform: translateX(0);
+	transition: all .4s ease-in;
+}
+
+.btn-login {
+	color: #fbfdff;
+	background: #a7e245;
+	transform: translateX(-30%);
+}
+
+.btn-signup {
+	color: #a7e245;
+	background: #fbfdff;
+	box-shadow: inset 0 0 0 2px #a7e245;
+	transform: translateX(30%);
+}
+
+================================================================================
+
+Filename: profile.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['profile_pic'])) {
+    $upload_dir = 'uploads/';
+    $uploaded_file = $upload_dir . basename($_FILES['profile_pic']['name']);
+    
+    if (move_uploaded_file($_FILES['profile_pic']['tmp_name'], $uploaded_file)) {
+        $stmt = $db->prepare("UPDATE users SET profile_pic = ? WHERE id = ?");
+        $stmt->bindValue(1, $uploaded_file, SQLITE3_TEXT);
+        $stmt->bindValue(2, $user_id, SQLITE3_INTEGER);
+        $stmt->execute();
+    }
+}
+
+$stmt = $db->prepare("SELECT username, profile_pic FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profil</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+        .profile-pic {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılarım</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($user['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Profil</h2>
+        <?php if (!empty($user['profile_pic'])): ?>
+            <img src="<?php echo htmlspecialchars($user['profile_pic']); ?>" alt="Profil Resmi" class="profile-pic">
+        <?php endif; ?>
+        <form action="profile.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="profile_pic">Profil Resmi Yükle</label>
+                <input type="file" class="form-control-file" id="profile_pic" name="profile_pic">
+            </div>
+            <button type="submit" class="btn btn-primary">Güncelle</button>
+        </form>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: sepetten_cikar.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("DELETE FROM carts WHERE user_id = ? AND shoe_id = ?");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->execute();
+}
+
+header("Location: sepetim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: update_user.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the user update
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['update_user_id'];
+    $username = $_POST['username'];
+    $role = $_POST['role'];
+
+    $stmt = $db->prepare("UPDATE users SET username = ?, role = ? WHERE id = ?");
+    $stmt->bindValue(1, $username, SQLITE3_TEXT);
+    $stmt->bindValue(2, $role, SQLITE3_TEXT);
+    $stmt->bindValue(3, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: logout.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+session_destroy();
+header("Location: giris_kayit.php");
+exit();
+?>
+
+================================================================================
+
+Filename: add_product.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// CSRF token oluşturma
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Ürün ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // CSRF token doğrulaması
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("CSRF token doğrulaması başarısız oldu.");
+    }
+
+    $name = htmlspecialchars($_POST['name']);
+    $description = htmlspecialchars($_POST['description']);
+    $price = htmlspecialchars($_POST['price']);
+    $image = $_FILES['image']['name'];
+
+    // Resmi images dizinine taşı
+    $target_file = "images/" . basename($image);
+    if (!move_uploaded_file($_FILES['image']['tmp_name'], $target_file)) {
+        echo "Resim yükleme hatası!";
+        exit();
+    }
+
+    // SQL sorgusu
+    $stmt = $db->prepare("INSERT INTO shoes (name, description, price, image) VALUES (?, ?, ?, ?)");
+    $stmt->bindValue(1, $name, SQLITE3_TEXT);
+    $stmt->bindValue(2, $description, SQLITE3_TEXT);
+    $stmt->bindValue(3, $price, SQLITE3_TEXT);
+    $stmt->bindValue(4, $target_file, SQLITE3_TEXT);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ürün Ekle</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılarım</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Ürün Ekle</h2>
+        <a href="admin.php" class="btn btn-secondary btn-back">Geri Dön</a>
+        <form action="add_product.php" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Fiyat</label>
+                <input type="text" class="form-control" id="price" name="price" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Resim</label>
+                <input type="file" class="form-control-file" id="image" name="image" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Ürün Ekle</button>
+        </form>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: sepetim.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Sepete eklenen ürünleri çek
+$cart_query = "SELECT s.id, s.name, s.description, s.price, s.image, c.quantity FROM carts c JOIN shoes s ON c.shoe_id = s.id WHERE c.user_id = ?";
+$stmt = $db->prepare($cart_query);
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sepetim</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .nav-link {
+            color: #343a40 !important;
+        }
+
+        .nav-link:hover {
+            color: #007bff !important;
+        }
+
+        .form-inline .form-control {
+            width: auto;
+        }
+
+        .container {
+            margin-top: 100px;
+        }
+
+        .shoe-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .shoe-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .col-md-3 {
+            flex: 0 0 23%;
+            max-width: 23%;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+        }
+
+        .footer .container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .footer span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Sepetim</h1>
+        <div class="row">
+            <?php while ($shoe = $result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="col-md-3">
+                    <div class="shoe-card">
+                        <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                        <div>
+                            <h3 class="card-title"><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                            <p class="card-text"><?php echo htmlspecialchars($shoe['description']); ?></p>
+                            <p class="card-text"><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                            <p class="card-text"><strong>Miktar:</strong> <?php echo htmlspecialchars($shoe['quantity']); ?></p>
+                            <form action="sepetten_cikar.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-danger">Sepetten Çıkar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: favorilere_ekle.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("INSERT INTO favorites (user_id, shoe_id) VALUES (?, ?)");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->execute();
+}
+
+header("Location: favorilerim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: styles.css
+--------------------------------------------------------------------------------
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    color: #343a40;
+}
+
+.header {
+    width: 100%;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.nav-link {
+    color: #343a40 !important;
+}
+
+.nav-link:hover {
+    color: #007bff !important;
+}
+
+.form-inline .form-control {
+    width: auto;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-img-top {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.footer {
+    width: 100%;
+    text-align: center;
+}
+
+.footer .container {
+    max-width: 960px;
+    margin: auto;
+}
+
+.footer span {
+    color: #6c757d;
+}
+
+.shoe-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 15px;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 800px;
+    color: #343a40;
+    display: flex;
+    align-items: center;
+}
+
+.shoe-card img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-right: 15px;
+}
+
+.shoe-card h3 {
+    margin-top: 0;
+}
+
+.shoe-card p {
+    margin: 5px 0;
+}
+
+.comments-section {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.comments-section h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.comment {
+    background-color: #f1f1f1;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.comment p {
+    margin: 0;
+}
+
+================================================================================
+
+Filename: giris_kayit.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action == 'login') {
+        // Giriş işlemi
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+
+        $stmt = $db->prepare("SELECT id, role FROM users WHERE username = ? AND password = ?");
+        $stmt->bindValue(1, $username, SQLITE3_TEXT);
+        $stmt->bindValue(2, $password, SQLITE3_TEXT);  // Burada password_hash kullanmak daha güvenli olacaktır
+        $result = $stmt->execute();
+        $user = $result->fetchArray(SQLITE3_ASSOC);
+
+        if ($user) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['role'] = $user['role'];
+            header("Location: index.php");
+            exit();
+        } else {
+            $error = "Geçersiz kullanıcı adı veya şifre!";
+        }
+    } elseif ($action == 'register') {
+        // Kayıt işlemi
+        $username = htmlspecialchars($_POST['username']);
+        $password = password_hash($_POST['password'], PASSWORD_DEFAULT);  // Güvenli şifre hashleme
+
+        $stmt = $db->prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)");
+        $stmt->bindValue(1, $username, SQLITE3_TEXT);
+        $stmt->bindValue(2, $password, SQLITE3_TEXT);
+        $stmt->bindValue(3, 'user', SQLITE3_TEXT);
+
+        if ($stmt->execute()) {
+            $success = "Kayıt başarılı! Giriş yapabilirsiniz.";
+        } else {
+            $error = "Kayıt başarısız!";
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login & Signup Forms</title>
+    <link rel="stylesheet" href="style_login.css">
+</head>
+<body>
+<section class="forms-section">
+  <h1 class="section-title">Login & Signup Forms</h1>
+  <div class="forms">
+    <div class="form-wrapper is-active">
+      <button type="button" class="switcher switcher-login">
+        Login
+        <span class="underline"></span>
+      </button>
+      <form class="form form-login" action="giris_kayit.php" method="post">
+        <input type="hidden" name="action" value="login">
+        <fieldset>
+          <legend>Please, enter your username and password for login.</legend>
+          <div class="input-block">
+            <label for="login-username">Username</label>
+            <input id="login-username" type="text" name="username" required>
+          </div>
+          <div class="input-block">
+            <label for="login-password">Password</label>
+            <input id="login-password" type="password" name="password" required>
+          </div>
+        </fieldset>
+        <?php if (isset($error) && $action == 'login'): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        <button type="submit" class="btn-login">Login</button>
+      </form>
+    </div>
+    <div class="form-wrapper">
+      <button type="button" class="switcher switcher-signup">
+        Sign Up
+        <span class="underline"></span>
+      </button>
+      <form class="form form-signup" action="giris_kayit.php" method="post">
+        <input type="hidden" name="action" value="register">
+        <fieldset>
+          <legend>Please, enter your username, email, password and password confirmation for sign up.</legend>
+          <div class="input-block">
+            <label for="signup-username">Username</label>
+            <input id="signup-username" type="text" name="username" required>
+          </div>
+          <div class="input-block">
+            <label for="signup-password">Password</label>
+            <input id="signup-password" type="password" name="password" required>
+          </div>
+          <div class="input-block">
+            <label for="signup-confirm-password">Confirm Password</label>
+            <input id="signup-confirm-password" type="password" name="confirm_password" required>
+          </div>
+        </fieldset>
+        <?php if (isset($success)): ?>
+            <div class="alert alert-success"><?php echo $success; ?></div>
+        <?php elseif (isset($error) && $action == 'register'): ?>
+            <div class="alert alert-danger"><?php echo $error; ?></div>
+        <?php endif; ?>
+        <button type="submit" class="btn-signup">Sign Up</button>
+      </form>
+    </div>
+  </div>
+</section>
+<script src="script_login.js"></script>
+</body>
+</html>
+
+================================================================================
+
+Filename: style_admin.css
+--------------------------------------------------------------------------------
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #3b4465;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.navbar {
+    background-color: #343a40;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.navbar .site-name {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.navbar .site-name a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.navbar .user-info {
+    display: flex;
+    align-items: center;
+}
+
+.navbar .user-info span {
+    margin-right: 15px;
+}
+
+.navbar .logout-button {
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.container {
+    padding: 20px;
+    width: 100%;
+    max-width: 1000px;
+    margin-top: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #44475a;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #50fa7b;
+}
+
+.btn-back {
+    margin-bottom: 20px;
+}
+
+label {
+    color: #fff;
+}
+
+.comment {
+    background-color: #6272a4;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.comment p {
+    margin: 0;
+}
+
+.comment form {
+    display: inline;
+}
+
+================================================================================
+
+Filename: script_login.js
+--------------------------------------------------------------------------------
+const switchers = [...document.querySelectorAll('.switcher')]
+
+switchers.forEach(item => {
+	item.addEventListener('click', function() {
+		switchers.forEach(item => item.parentElement.classList.remove('is-active'))
+		this.parentElement.classList.add('is-active')
+	})
+})
+
+================================================================================
+
+Filename: upload.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['file'])) {
+    $upload_dir = 'uploads/';
+    $uploaded_file = $upload_dir . basename($_FILES['file']['name']);
+    
+    if (move_uploaded_file($_FILES['file']['tmp_name'], $uploaded_file)) {
+        $stmt = $db->prepare("INSERT INTO uploads (user_id, filename, filepath) VALUES (?, ?, ?)");
+        $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(2, basename($_FILES['file']['name']), SQLITE3_TEXT);
+        $stmt->bindValue(3, $uploaded_file, SQLITE3_TEXT);
+        $stmt->execute();
+        echo "Dosya başarıyla yüklendi.";
+    } else {
+        echo "Dosya yükleme hatası!";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dosya Yükle</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılar</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Dosya Yükle</h2>
+        <a href="index.php" class="btn btn-secondary btn-back">Geri Dön</a>
+        <form action="upload.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">Dosya Seç</label>
+                <input type="file" class="form-control-file" id="file" name="file" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Yükle</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrap.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+================================================================================
+
+Filename: delete_comment.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Check if the user is logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Handle the comment deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $id = $_POST['delete_comment_id'];
+
+    $stmt = $db->prepare("DELETE FROM comments WHERE id = ?");
+    $stmt->bindValue(1, $id, SQLITE3_INTEGER);
+    $stmt->execute();
+
+    header("Location: admin.php");
+    exit();
+}
+?>
+
+================================================================================
+
+Filename: favorilerim.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Favorilere eklenen ürünleri çek
+$favorites_query = "SELECT s.id, s.name, s.description, s.price, s.image FROM favorites f JOIN shoes s ON f.shoe_id = s.id WHERE f.user_id = ?";
+$stmt = $db->prepare($favorites_query);
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Favorilerim</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            width: 100%;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 24px;
+        }
+
+        .nav-link {
+            color: #343a40 !important;
+        }
+
+        .nav-link:hover {
+            color: #007bff !important;
+        }
+
+        .form-inline .form-control {
+            width: auto;
+        }
+
+        .container {
+            margin-top: 100px;
+        }
+
+        .shoe-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .shoe-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .card-text {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+        }
+
+        .col-md-3 {
+            flex: 0 0 23%;
+            max-width: 23%;
+            margin-bottom: 20px;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+        }
+
+        .footer .container {
+            max-width: 960px;
+            margin: auto;
+        }
+
+        .footer span {
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Favorilerim</h1>
+        <div class="row">
+            <?php while ($shoe = $result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="col-md-3">
+                    <div class="shoe-card">
+                        <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                        <div>
+                            <h3 class="card-title"><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                            <p class="card-text"><?php echo htmlspecialchars($shoe['description']); ?></p>
+                            <p class="card-text"><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                            <form action="favorilerimden_cikar.php" method="post">
+                                <input type="hidden" name="shoe_id" value="<?php echo $shoe['id']; ?>">
+                                <button type="submit" class="btn btn-danger">Favorilerden Çıkar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: update_shoe.php
+--------------------------------------------------------------------------------
+
+================================================================================
+
+Filename: shoe.php
+--------------------------------------------------------------------------------
+<?php
+require_once 'db.php';
+session_start();
+
+// Ayakkabı ID'sini al
+$shoe_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("SELECT name, description, price, image FROM shoes WHERE id = ?");
+    $stmt->bindValue(1, $shoe_id, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    $shoe = $result->fetchArray(SQLITE3_ASSOC);
+} else {
+    echo "Geçersiz ayakkabı ID'si.";
+    exit();
+}
+
+// Yorumları çek
+$comments_stmt = $db->prepare("SELECT c.comment, u.username FROM comments c JOIN users u ON c.user_id = u.id WHERE c.shoe_id = ? ORDER BY c.created_at DESC");
+$comments_stmt->bindValue(1, $shoe_id, SQLITE3_INTEGER);
+$comments_result = $comments_stmt->execute();
+
+// Yorum ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['comment'])) {
+    $comment = htmlspecialchars(trim($_POST['comment']));
+    $user_id = $_SESSION['user_id'] ?? 0;
+
+    if ($user_id > 0 && !empty($comment)) {
+        $insert_comment_stmt = $db->prepare("INSERT INTO comments (user_id, shoe_id, comment) VALUES (?, ?, ?)");
+        $insert_comment_stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+        $insert_comment_stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+        $insert_comment_stmt->bindValue(3, $comment, SQLITE3_TEXT);
+        $insert_comment_stmt->execute();
+        header("Location: shoe.php?id=" . $shoe_id);
+        exit();
+    } else {
+        echo "Yorum eklenemedi. Lütfen giriş yapın ve yorum alanını boş bırakmayın.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title><?php echo htmlspecialchars($shoe['name']); ?></title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding-top: 70px;
+        }
+        .navbar {
+            background-color: #343a40;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .navbar .site-name a {
+            color: #fff;
+            text-decoration: none;
+        }
+        .navbar .user-info span {
+            margin-right: 15px;
+        }
+        .navbar .logout-button {
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        .container {
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+        }
+        .shoe-detail img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+        .comments-section {
+            margin-top: 30px;
+        }
+        .comment {
+            background-color: #e9ecef;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .form-group textarea {
+            resize: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılar</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username'] ?? ''); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="shoe-detail">
+            <h1><?php echo htmlspecialchars($shoe['name']); ?></h1>
+            <img src="images/<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+            <p><strong>Açıklama:</strong> <?php echo nl2br(htmlspecialchars($shoe['description'])); ?></p>
+            <p><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+        </div>
+
+        <div class="comments-section">
+            <h2>Yorumlar</h2>
+            <?php while ($comment = $comments_result->fetchArray(SQLITE3_ASSOC)): ?>
+                <div class="comment">
+                    <p><strong><?php echo htmlspecialchars($comment['username']); ?>:</strong> <?php echo htmlspecialchars($comment['comment']); ?></p>
+                </div>
+            <?php endwhile; ?>
+
+            <?php if (isset($_SESSION['user_id'])): ?>
+                <form action="shoe.php?id=<?php echo $shoe_id; ?>" method="post">
+                    <div class="form-group">
+                        <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="Yorumunuzu yazın..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Yorumu Gönder</button>
+                </form>
+            <?php else: ?>
+                <p>Yorum yapmak için <a href="giris_kayit.php">giriş yapın</a>.</p>
+            <?php endif; ?>
+        </div>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+================================================================================
+
+Filename: navbar.css
+--------------------------------------------------------------------------------
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100vh;
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 1;
+  overflow: hidden;
+  background: #fff;
+  transition: 3s;
+}
+
+ul {
+  list-style-type: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0;
+  width: 100%;
+  background-size: 400% 400%;
+  background-image: linear-gradient(-45deg, #ff5959, #ff4040, #ff0d6e, #ff8033,#d74177);
+  animation: 12s myGradient infinite;
+  border-radius: 40px;
+  box-shadow: 3px 3px 20px #ff3352;
+  border-top-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+@keyframes myGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50%{
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.fa-search {
+  transition: 1s;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+li a {
+  color: #fff;
+  text-decoration: none;
+  padding: 15px 20px;
+  font-family: verdana;
+  font-weight: lighter;
+  font-size: 20px;
+  letter-spacing: 1px;
+  opacity: 0.9;
+}
+
+.navigation {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.fa-search:hover,
+.active:hover,
+.active1:hover,
+.active2:hover {
+  color: #fff;
+  animation: 1.5s myFlash linear infinite;
+  text-shadow: 2px 2px 30px #fff;
+  transition: 2s;
+}
+
+@keyframes myFlash {
+  0% {
+    opacity: 1;
+    text-shadow: transparent;
+  }
+  50% {
+    opacity: .1;
+  }
+  100% {
+    opacity: 1;
+    text-shadow: 2px 2px 20px #fff;
+  }
+}
+
+.search-form {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.search-form input[type="text"] {
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  margin-right: 10px;
+}
+
+.search-form button {
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: none;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  right: 0;
+  left: auto;
+}
+
+.ml-auto {
+  margin-left: auto;
+}
+
+================================================================================
+
+Filename: favorilerden_cikar.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+$user_id = $_SESSION['user_id'];
+$shoe_id = $_POST['shoe_id'] ?? 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("DELETE FROM favorites WHERE user_id = ? AND shoe_id = ?");
+    $stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+    $stmt->bindValue(2, $shoe_id, SQLITE3_INTEGER);
+    $stmt->execute();
+}
+
+header("Location: favorilerim.php");
+exit();
+?>
+
+================================================================================
+
+Filename: csrf_token.php
+--------------------------------------------------------------------------------
+<?php
+function generateToken() {
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+}
+
+function validateToken($token) {
+    return $token === $_SESSION['csrf_token'];
+}
+?>
+
+================================================================================
+
+Filename: shoe_add.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Ayakkabı ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $name = $_POST['name'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+    $user_id = $_SESSION['user_id'];
+
+    $image_path = '';
+    if (!empty($_FILES['image']['name'])) {
+        $image_path = 'uploads/' . basename($_FILES['image']['name']);
+        if (!move_uploaded_file($_FILES['image']['tmp_name'], $image_path)) {
+            echo "Resim yükleme hatası!";
+            exit();
+        }
+    }
+
+    $stmt = $db->prepare("INSERT INTO shoes (name, description, price, image) VALUES (?, ?, ?, ?)");
+    $stmt->bindValue(1, $name, SQLITE3_TEXT);
+    $stmt->bindValue(2, $description, SQLITE3_TEXT);
+    $stmt->bindValue(3, $price, SQLITE3_FLOAT);
+    $stmt->bindValue(4, $image_path, SQLITE3_TEXT);
+
+    if ($stmt->execute()) {
+        echo "Yeni ayakkabı başarıyla eklendi.";
+    } else {
+        echo "Hata: " . $db->lastErrorMsg();
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ayakkabı Ekle</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <style>
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name">Ayakkabılarım</div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+            <a href="index.php?action=logout" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Ayakkabı Ekle</h2>
+        <a href="admin.php" class="btn btn-secondary btn-back">Geri Dön</a>
+        <form action="shoe_add.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Fiyat</label>
+                <input type="text" class="form-control" id="price" name="price" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Resim</label>
+                <input type="file" class="form-control-file" id="image" name="image" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Ayakkabı Ekle</button>
+        </form>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrap.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+================================================================================
+
+Filename: admin.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Kullanıcı bilgilerini alın
+$user_id = $_SESSION['user_id'];
+$stmt = $db->prepare("SELECT username, role FROM users WHERE id = ?");
+$stmt->bindValue(1, $user_id, SQLITE3_INTEGER);
+$result = $stmt->execute();
+$user = $result->fetchArray(SQLITE3_ASSOC);
+$username = $user['username'];
+$role = $user['role'];
+
+// Admin kontrolü
+if ($role !== 'admin') {
+    // Yetkisi olmayan kullanıcıyı ana sayfaya yönlendir
+    header("Location: index.php");
+    exit();
+}
+
+// Ürünleri veritabanından çek
+$shoes_query = "SELECT id, name, description, price, image FROM shoes";
+$shoes_result = $db->query($shoes_query);
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Paneli</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style_index.css">
+    <link rel="stylesheet" href="navbar.css">
+</head>
+<body>
+    <header class="header">
+        <nav class="navbar">
+            <ul class="nav-type">
+                <li><a href="index.php" class="active">Ana Sayfa</a></li>
+                <li><a href="favorilerim.php" class="active1">Favorilerim</a></li>
+                <li><a href="sepetim.php" class="active2">Sepetim</a></li>
+                <li>
+                    <form class="search-form" action="search.php" method="get">
+                        <input type="text" name="query" placeholder="Ayakkabı Ara">
+                        <button type="submit"><i class="fa fa-search"></i></button>
+                    </form>
+                </li>
+                <li class="nav-item dropdown ml-auto">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <?php echo htmlspecialchars($username); ?>
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="profile.php">Profilimi Düzenle</a>
+                        <a class="dropdown-item" href="logout.php">Çıkış Yap</a>
+                    </div>
+                </li>
+            </ul>
+        </nav>
+    </header>
+    <div class="container mt-5">
+        <h1>Admin Paneli - Ürünler</h1>
+        <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="shoe-card">
+                <img src="<?php echo htmlspecialchars($shoe['image']); ?>" alt="Ayakkabı Resmi">
+                <div>
+                    <h3><a href="shoe.php?id=<?php echo $shoe['id']; ?>"><?php echo htmlspecialchars($shoe['name']); ?></a></h3>
+                    <p><?php echo htmlspecialchars($shoe['description']); ?></p>
+                    <p><strong>Fiyat:</strong> <?php echo htmlspecialchars($shoe['price']); ?> TL</p>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    </div>
+</body>
+</html>
+
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<link rel="stylesheet" href="navbar.css">
+
+    <meta charset="UTF-8">
+    <title>Admin Paneli</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: "Poppins", sans-serif;
+            background-color: #3b4465;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-y: auto; /* Sayfanın dikey kaydırılabilir olması için */
+        }
+        .navbar {
+            background-color: #343a40;
+            color: #fff;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .container {
+            margin-top: 100px;
+            background-color: #44475a;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+            color: #fff;
+            width: 80%;
+            max-width: 1000px;
+        }
+        h2 {
+            color: #50fa7b;
+        }
+        .btn-back {
+            margin-bottom: 20px;
+        }
+        label {
+            color: #fff;
+        }
+        .comment, .shoe, .user {
+            background-color: #6272a4;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .comment p, .shoe p, .user p {
+            margin: 0;
+        }
+        .comment form, .shoe form, .user form {
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="site-name"><a href="index.php">Ayakkabılarım</a></div>
+        <div class="user-info">
+            <span><?php echo htmlspecialchars($username); ?></span>
+            <a href="logout.php" class="logout-button">Çıkış Yap</a>
+        </div>
+    </div>
+    <div class="container">
+        <h2 class="text-center">Admin Paneli</h2>
+
+        <h3>Ürün Ekle</h3>
+        <form action="add_product.php" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="name">İsim</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="description">Açıklama</label>
+                <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="price">Fiyat</label>
+                <input type="text" class="form-control" id="price" name="price" required>
+            </div>
+            <div class="form-group">
+                <label for="image">Resim</label>
+                <input type="file" class="form-control-file" id="image" name="image">
+            </div>
+            <button type="submit" class="btn btn-primary">Ürün Ekle</button>
+        </form>
+
+        <h3>Ürünler</h3>
+        <?php while ($shoe = $shoes_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="shoe">
+                <p><strong><?php echo htmlspecialchars($shoe['name']); ?></strong> - <em><?php echo htmlspecialchars($shoe['price']); ?> TL</em></p>
+                <p><?php echo htmlspecialchars($shoe['description']); ?></p>
+                <form action="delete_product.php" method="post" style="display: inline;">
+                    <input type="hidden" name="delete_shoe_id" value="<?php echo $shoe['id']; ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                </form>
+                <form action="update_product.php" method="post" style="display: inline;">
+                    <input type="hidden" name="update_shoe_id" value="<?php echo $shoe['id']; ?>">
+                    <input type="text" name="name" value="<?php echo htmlspecialchars($shoe['name']); ?>" required>
+                    <input type="text" name="description" value="<?php echo htmlspecialchars($shoe['description']); ?>" required>
+                    <input type="text" name="price" value="<?php echo htmlspecialchars($shoe['price']); ?>" required>
+                    <button type="submit" class="btn btn-warning btn-sm">Güncelle</button>
+                </form>
+            </div>
+        <?php endwhile; ?>
+
+        <h3>Yorumlar</h3>
+        <?php while ($comment = $comments_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="comment">
+                <p><?php echo htmlspecialchars($comment['comment']); ?></p>
+                <p><strong><?php echo htmlspecialchars($comment['username']); ?></strong> - <em><?php echo htmlspecialchars($comment['shoe_name']); ?></em></p>
+                <form action="delete_comment.php" method="post" style="display: inline;">
+                    <input type="hidden" name="delete_comment_id" value="<?php echo $comment['id']; ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                </form>
+            </div>
+        <?php endwhile; ?>
+
+        <h3>Kullanıcılar</h3>
+        <?php while ($user = $users_result->fetchArray(SQLITE3_ASSOC)): ?>
+            <div class="user">
+                <p><strong><?php echo htmlspecialchars($user['username']); ?></strong> - <em><?php echo htmlspecialchars($user['role']); ?></em></p>
+                <form action="delete_user.php" method="post" style="display: inline;">
+                    <input type="hidden" name="delete_user_id" value="<?php echo $user['id']; ?>">
+                    <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                </form>
+                <form action="update_user.php" method="post" style="display: inline;">
+                    <input type="hidden" name="update_user_id" value="<?php echo $user['id']; ?>">
+                    <input type="text" name="username" value="<?php echo htmlspecialchars($user['username']); ?>" required>
+                    <select name="role">
+                        <option value="user" <?php if ($user['role'] == 'user') echo 'selected'; ?>>Kullanıcı</option>
+                        <option value="editor" <?php if ($user['role'] == 'editor') echo 'selected'; ?>>Editör</option>
+                        <option value="admin" <?php if ($user['role'] == 'admin') echo 'selected'; ?>>Admin</option>
+                    </select>
+                    <button type="submit" class="btn btn-warning btn-sm">Güncelle</button>
+                </form>
+            </div>
+        <?php endwhile; ?>
+    </div>
+</body>
+</html>
+
+================================================================================
+
+Filename: navbar.js
+--------------------------------------------------------------------------------
+function showSearch() {
+    const searchForm = document.getElementById('searchBar');
+    searchForm.classList.toggle('active');
+  }
+  
+================================================================================
+
+Filename: show_image.php
+--------------------------------------------------------------------------------
+<?php
+require_once 'db.php';
+
+$shoe_id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+
+if ($shoe_id > 0) {
+    $stmt = $db->prepare("SELECT image FROM shoes WHERE id = ?");
+    $stmt->bindValue(1, $shoe_id, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    $shoe = $result->fetchArray(SQLITE3_ASSOC);
+    
+    if ($shoe && file_exists($shoe['image'])) {
+        header('Content-Type: image/jpeg');
+        readfile($shoe['image']);
+        exit();
+    }
+}
+
+echo "Resim bulunamadı.";
+?>
+
+================================================================================
+
+Filename: bcvbvc.php
+--------------------------------------------------------------------------------
+<?php
+session_start();
+require_once 'db.php';
+
+// CSRF token oluşturma
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+// Kullanıcı giriş yapmamışsa giriş sayfasına yönlendir
+if (!isset($_SESSION['user_id'])) {
+    header("Location: giris_kayit.php");
+    exit();
+}
+
+// Ürün ekleme işlemi
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+        die("CSRF token mismatch");
+    }
+
+    $name = $_POST['name'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+    $image = $_FILES['image']['name'];
+
+    // Resim yükleme
+    if (move_uploaded_file($_FILES['image']['tmp_name'], "images/$image")) {
+        $stmt = $db->prepare("INSERT INTO shoes (name, description, price, image) VALUES (?, ?, ?, ?)");
+        $stmt->bindValue(1, $name, SQLITE3_TEXT);
+        $stmt->bindValue(2, $description, SQLITE3_TEXT);
+        $stmt->bindValue(3, $price, SQLITE3_TEXT);
+        $stmt->bindValue(4, $image, SQLITE3_TEXT);
+        $stmt->execute();
+
+        header("Location: admin.php");
+        exit();
+    } else {
+        echo "Resim yüklenirken hata oluştu!";
+    }
+}
+?>
+
+================================================================================
+
+Filename: run.php
+--------------------------------------------------------------------------------
+<?php
+echo "Bu bir kötü amaçlı dosya yüklemesidir!";
+?>
+
+
+================================================================================
+

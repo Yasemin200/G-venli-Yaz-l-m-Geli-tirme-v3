@@ -1,0 +1,95 @@
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #3b4465;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.navbar {
+    background-color: #343a40;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+.navbar .site-name {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.navbar .site-name a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.navbar .user-info {
+    display: flex;
+    align-items: center;
+}
+
+.navbar .user-info span {
+    margin-right: 15px;
+}
+
+.navbar .logout-button {
+    background-color: #dc3545;
+    color: #fff;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.container {
+    padding: 20px;
+    width: 100%;
+    max-width: 1000px;
+    margin-top: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #44475a;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    color: #50fa7b;
+}
+
+.btn-back {
+    margin-bottom: 20px;
+}
+
+label {
+    color: #fff;
+}
+
+.comment {
+    background-color: #6272a4;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.comment p {
+    margin: 0;
+}
+
+.comment form {
+    display: inline;
+}

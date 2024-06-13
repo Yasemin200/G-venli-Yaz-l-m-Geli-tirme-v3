@@ -1,0 +1,119 @@
+body {
+    font-family: "Poppins", sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    color: #343a40;
+}
+
+.header {
+    width: 100%;
+    background-color: #fff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+    font-weight: bold;
+    font-size: 24px;
+}
+
+.nav-link {
+    color: #343a40 !important;
+}
+
+.nav-link:hover {
+    color: #007bff !important;
+}
+
+.form-inline .form-control {
+    width: auto;
+}
+
+.card {
+    border: none;
+    border-radius: 10px;
+}
+
+.card-img-top {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.footer {
+    width: 100%;
+    text-align: center;
+}
+
+.footer .container {
+    max-width: 960px;
+    margin: auto;
+}
+
+.footer span {
+    color: #6c757d;
+}
+
+.shoe-card {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 15px;
+    box-shadow: 0px 15px 20px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 800px;
+    color: #343a40;
+    display: flex;
+    align-items: center;
+}
+
+.shoe-card img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-right: 15px;
+}
+
+.shoe-card h3 {
+    margin-top: 0;
+}
+
+.shoe-card p {
+    margin: 5px 0;
+}
+
+.comments-section {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 800px;
+}
+
+.comments-section h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.comment {
+    background-color: #f1f1f1;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+}
+
+.comment p {
+    margin: 0;
+}
